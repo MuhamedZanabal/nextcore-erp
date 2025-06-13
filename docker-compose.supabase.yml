@@ -1,0 +1,277 @@
+version: '3.8'
+
+services:
+  # Remove local PostgreSQL and TimescaleDB since we're using Supabase
+  # Keep Redis and NATS for caching and messaging
+  redis:
+    image: redis:7
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  nats:
+    image: nats:latest
+    ports:
+      - "4222:4222"
+      - "8222:8222"
+    command: "--jetstream"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8222/healthz"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  api-gateway:
+    image: kong:3.3.0
+    environment:
+      KONG_DATABASE: "off"
+      KONG_DECLARATIVE_CONFIG: /etc/kong/kong.yml
+      KONG_PROXY_ACCESS_LOG: /dev/stdout
+      KONG_ADMIN_ACCESS_LOG: /dev/stdout
+      KONG_PROXY_ERROR_LOG: /dev/stderr
+      KONG_ADMIN_ERROR_LOG: /dev/stderr
+    ports:
+      - "8000:8000"
+      - "8001:8001"
+    volumes:
+      - ./infra/kong:/etc/kong
+    depends_on:
+      - auth-service
+      - crm-service
+    healthcheck:
+      test: ["CMD", "kong", "health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  auth-service:
+    build:
+      context: ./services/auth-service
+      dockerfile: Dockerfile
+    environment:
+      - NODE_ENV=supabase
+      - PORT=3000
+      - SUPABASE_URL=https://epdyjgywuuuriaruuysf.supabase.co
+      - SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVwZHlqZ3l3dXV1cmlhcnV1eXNmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDk4NDk5MTEsImV4cCI6MjA2NTQyNTkxMX0.EH_Scpym9uo-OPG-m47E6bwnAGPEDt-f7-hV3r8hdgQ
+      - DB_HOST=db.epdyjgywuuuriaruuysf.supabase.co
+      - DB_PORT=5432
+      - DB_USERNAME=postgres
+      - DB_PASSWORD=${SUPABASE_DB_PASSWORD}
+      - DB_DATABASE=postgres
+      - DB_SSL=true
+      - DB_SSL_REJECT_UNAUTHORIZED=false
+      - REDIS_URL=redis://redis:6379
+      - NATS_URL=nats://nats:4222
+    ports:
+      - "3000:3000"
+    depends_on:
+      - redis
+      - nats
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  crm-service:
+    build:
+      context: ./services/crm-service
+      dockerfile: Dockerfile
+    environment:
+      - NODE_ENV=supabase
+      - PORT=3001
+      - SUPABASE_URL=https://epdyjgywuuuriaruuysf.supabase.co
+      - SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVwZHlqZ3l3dXV1cmlhcnV1eXNmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDk4NDk5MTEsImV4cCI6MjA2NTQyNTkxMX0.EH_Scpym9uo-OPG-m47E6bwnAGPEDt-f7-hV3r8hdgQ
+      - DB_HOST=db.epdyjgywuuuriaruuysf.supabase.co
+      - DB_PORT=5432
+      - DB_USERNAME=postgres
+      - DB_PASSWORD=${SUPABASE_DB_PASSWORD}
+      - DB_DATABASE=postgres
+      - DB_SSL=true
+      - DB_SSL_REJECT_UNAUTHORIZED=false
+      - REDIS_URL=redis://redis:6379
+      - NATS_URL=nats://nats:4222
+    ports:
+      - "3001:3001"
+    depends_on:
+      - redis
+      - nats
+      - auth-service
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3001/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  inventory-service:
+    build:
+      context: ./services/inventory-service
+      dockerfile: Dockerfile
+    environment:
+      - NODE_ENV=supabase
+      - PORT=3002
+      - SUPABASE_URL=https://epdyjgywuuuriaruuysf.supabase.co
+      - SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVwZHlqZ3l3dXV1cmlhcnV1eXNmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDk4NDk5MTEsImV4cCI6MjA2NTQyNTkxMX0.EH_Scpym9uo-OPG-m47E6bwnAGPEDt-f7-hV3r8hdgQ
+      - DB_HOST=db.epdyjgywuuuriaruuysf.supabase.co
+      - DB_PORT=5432
+      - DB_USERNAME=postgres
+      - DB_PASSWORD=${SUPABASE_DB_PASSWORD}
+      - DB_DATABASE=postgres
+      - DB_SSL=true
+      - DB_SSL_REJECT_UNAUTHORIZED=false
+      - REDIS_URL=redis://redis:6379
+      - NATS_URL=nats://nats:4222
+    ports:
+      - "3002:3002"
+    depends_on:
+      - redis
+      - nats
+      - auth-service
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3002/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  sales-service:
+    build:
+      context: ./services/sales-service
+      dockerfile: Dockerfile
+    environment:
+      - NODE_ENV=supabase
+      - PORT=3003
+      - SUPABASE_URL=https://epdyjgywuuuriaruuysf.supabase.co
+      - SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVwZHlqZ3l3dXV1cmlhcnV1eXNmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDk4NDk5MTEsImV4cCI6MjA2NTQyNTkxMX0.EH_Scpym9uo-OPG-m47E6bwnAGPEDt-f7-hV3r8hdgQ
+      - DB_HOST=db.epdyjgywuuuriaruuysf.supabase.co
+      - DB_PORT=5432
+      - DB_USERNAME=postgres
+      - DB_PASSWORD=${SUPABASE_DB_PASSWORD}
+      - DB_DATABASE=postgres
+      - DB_SSL=true
+      - DB_SSL_REJECT_UNAUTHORIZED=false
+      - REDIS_URL=redis://redis:6379
+      - NATS_URL=nats://nats:4222
+    ports:
+      - "3003:3003"
+    depends_on:
+      - redis
+      - nats
+      - auth-service
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3003/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  invoicing-service:
+    build:
+      context: ./services/invoicing-service
+      dockerfile: Dockerfile
+    environment:
+      - NODE_ENV=supabase
+      - PORT=3004
+      - SUPABASE_URL=https://epdyjgywuuuriaruuysf.supabase.co
+      - SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVwZHlqZ3l3dXV1cmlhcnV1eXNmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDk4NDk5MTEsImV4cCI6MjA2NTQyNTkxMX0.EH_Scpym9uo-OPG-m47E6bwnAGPEDt-f7-hV3r8hdgQ
+      - DB_HOST=db.epdyjgywuuuriaruuysf.supabase.co
+      - DB_PORT=5432
+      - DB_USERNAME=postgres
+      - DB_PASSWORD=${SUPABASE_DB_PASSWORD}
+      - DB_DATABASE=postgres
+      - DB_SSL=true
+      - DB_SSL_REJECT_UNAUTHORIZED=false
+      - REDIS_URL=redis://redis:6379
+      - NATS_URL=nats://nats:4222
+    ports:
+      - "3004:3004"
+    depends_on:
+      - redis
+      - nats
+      - auth-service
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3004/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  accounting-service:
+    build:
+      context: ./services/accounting-service
+      dockerfile: Dockerfile
+    environment:
+      - NODE_ENV=supabase
+      - PORT=3005
+      - SUPABASE_URL=https://epdyjgywuuuriaruuysf.supabase.co
+      - SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVwZHlqZ3l3dXV1cmlhcnV1eXNmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDk4NDk5MTEsImV4cCI6MjA2NTQyNTkxMX0.EH_Scpym9uo-OPG-m47E6bwnAGPEDt-f7-hV3r8hdgQ
+      - DB_HOST=db.epdyjgywuuuriaruuysf.supabase.co
+      - DB_PORT=5432
+      - DB_USERNAME=postgres
+      - DB_PASSWORD=${SUPABASE_DB_PASSWORD}
+      - DB_DATABASE=postgres
+      - DB_SSL=true
+      - DB_SSL_REJECT_UNAUTHORIZED=false
+      - REDIS_URL=redis://redis:6379
+      - NATS_URL=nats://nats:4222
+    ports:
+      - "3005:3005"
+    depends_on:
+      - redis
+      - nats
+      - auth-service
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3005/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  hrm-service:
+    build:
+      context: ./services/hrm-service
+      dockerfile: Dockerfile
+    environment:
+      - NODE_ENV=supabase
+      - PORT=3006
+      - SUPABASE_URL=https://epdyjgywuuuriaruuysf.supabase.co
+      - SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVwZHlqZ3l3dXV1cmlhcnV1eXNmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDk4NDk5MTEsImV4cCI6MjA2NTQyNTkxMX0.EH_Scpym9uo-OPG-m47E6bwnAGPEDt-f7-hV3r8hdgQ
+      - DB_HOST=db.epdyjgywuuuriaruuysf.supabase.co
+      - DB_PORT=5432
+      - DB_USERNAME=postgres
+      - DB_PASSWORD=${SUPABASE_DB_PASSWORD}
+      - DB_DATABASE=postgres
+      - DB_SSL=true
+      - DB_SSL_REJECT_UNAUTHORIZED=false
+      - REDIS_URL=redis://redis:6379
+      - NATS_URL=nats://nats:4222
+    ports:
+      - "3006:3006"
+    depends_on:
+      - redis
+      - nats
+      - auth-service
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3006/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  frontend:
+    build:
+      context: ./frontend/app
+      dockerfile: Dockerfile
+    ports:
+      - "8080:80"
+    depends_on:
+      - api-gateway
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:80/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  redis-data:

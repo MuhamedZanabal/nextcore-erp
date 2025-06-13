@@ -29,5 +29,9 @@
     "eslint-plugin-prettier": "^5.0.0",
     "prettier": "^3.0.0",
     "typescript": "^5.1.6"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.50.0",
+    "express": "^5.1.0"
   }
 }

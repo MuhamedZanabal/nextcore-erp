@@ -28,6 +28,9 @@ import { RolesModule } from './modules/roles/roles.module';
         entities: [__dirname + '/**/*.entity{.ts,.js}'],
         synchronize: configService.get('DB_SYNC', 'false') === 'true',
         logging: configService.get('DB_LOGGING', 'false') === 'true',
+        ssl: configService.get('DB_SSL', 'false') === 'true' ? {
+          rejectUnauthorized: configService.get('DB_SSL_REJECT_UNAUTHORIZED', 'false') === 'true'
+        } : false,
       }),
     }),
     
