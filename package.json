@@ -1,0 +1,33 @@
+{
+  "name": "nextcore-erp",
+  "version": "0.1.0",
+  "private": true,
+  "description": "NextCore ERP - A cloud-native, modular enterprise resource planning platform",
+  "scripts": {
+    "dev": "pnpm -r --parallel run dev",
+    "build": "pnpm -r run build",
+    "test": "pnpm -r run test",
+    "lint": "pnpm -r run lint"
+  },
+  "keywords": [
+    "erp",
+    "enterprise",
+    "cloud-native",
+    "microservices"
+  ],
+  "author": "NextCore Team",
+  "license": "BSL",
+  "engines": {
+    "node": ">=18.0.0",
+    "pnpm": ">=8.0.0"
+  },
+  "devDependencies": {
+    "@typescript-eslint/eslint-plugin": "^6.0.0",
+    "@typescript-eslint/parser": "^6.0.0",
+    "eslint": "^8.45.0",
+    "eslint-config-prettier": "^9.0.0",
+    "eslint-plugin-prettier": "^5.0.0",
+    "prettier": "^3.0.0",
+    "typescript": "^5.1.6"
+  }
+}

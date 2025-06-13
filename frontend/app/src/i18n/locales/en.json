@@ -1,0 +1,297 @@
+{
+  "common": {
+    "loading": "Loading...",
+    "error": "An error occurred",
+    "success": "Success",
+    "save": "Save",
+    "cancel": "Cancel",
+    "delete": "Delete",
+    "edit": "Edit",
+    "create": "Create",
+    "update": "Update",
+    "search": "Search",
+    "filter": "Filter",
+    "export": "Export",
+    "import": "Import",
+    "refresh": "Refresh",
+    "back": "Back",
+    "next": "Next",
+    "previous": "Previous",
+    "submit": "Submit",
+    "confirm": "Confirm",
+    "yes": "Yes",
+    "no": "No",
+    "actions": "Actions",
+    "status": "Status",
+    "date": "Date",
+    "name": "Name",
+    "description": "Description",
+    "total": "Total",
+    "amount": "Amount",
+    "quantity": "Quantity",
+    "price": "Price"
+  },
+  "auth": {
+    "login": "Login",
+    "logout": "Logout",
+    "register": "Register",
+    "email": "Email",
+    "password": "Password",
+    "confirmPassword": "Confirm Password",
+    "forgotPassword": "Forgot Password?",
+    "rememberMe": "Remember Me",
+    "signIn": "Sign In",
+    "signUp": "Sign Up",
+    "invalidCredentials": "Invalid email or password",
+    "emailRequired": "Email is required",
+    "passwordRequired": "Password is required",
+    "passwordTooShort": "Password must be at least 8 characters",
+    "emailInvalid": "Please enter a valid email address"
+  },
+  "navigation": {
+    "dashboard": "Dashboard",
+    "crm": "CRM",
+    "sales": "Sales",
+    "invoicing": "Invoicing",
+    "inventory": "Inventory",
+    "accounting": "Accounting",
+    "hrm": "Human Resources",
+    "settings": "Settings",
+    "reports": "Reports"
+  },
+  "dashboard": {
+    "title": "Dashboard",
+    "welcome": "Welcome back",
+    "overview": "Overview",
+    "recentActivity": "Recent Activity",
+    "quickActions": "Quick Actions",
+    "kpis": "Key Performance Indicators"
+  },
+  "crm": {
+    "title": "Customer Relationship Management",
+    "contacts": {
+      "title": "Contacts",
+      "create": "Create Contact",
+      "edit": "Edit Contact",
+      "delete": "Delete Contact",
+      "firstName": "First Name",
+      "lastName": "Last Name",
+      "email": "Email",
+      "phone": "Phone",
+      "company": "Company",
+      "jobTitle": "Job Title",
+      "address": "Address",
+      "notes": "Notes",
+      "activities": "Activities",
+      "opportunities": "Opportunities"
+    },
+    "leads": {
+      "title": "Leads",
+      "create": "Create Lead",
+      "edit": "Edit Lead",
+      "convert": "Convert to Opportunity",
+      "source": "Source",
+      "score": "Score",
+      "status": "Status",
+      "assignedTo": "Assigned To"
+    },
+    "opportunities": {
+      "title": "Opportunities",
+      "create": "Create Opportunity",
+      "edit": "Edit Opportunity",
+      "value": "Value",
+      "stage": "Stage",
+      "probability": "Probability",
+      "expectedCloseDate": "Expected Close Date",
+      "actualCloseDate": "Actual Close Date"
+    },
+    "campaigns": {
+      "title": "Campaigns",
+      "create": "Create Campaign",
+      "edit": "Edit Campaign",
+      "type": "Type",
+      "startDate": "Start Date",
+      "endDate": "End Date",
+      "budget": "Budget",
+      "targetAudience": "Target Audience"
+    }
+  },
+  "sales": {
+    "title": "Sales",
+    "products": {
+      "title": "Products",
+      "create": "Create Product",
+      "edit": "Edit Product",
+      "sku": "SKU",
+      "category": "Category",
+      "listPrice": "List Price",
+      "costPrice": "Cost Price",
+      "inStock": "In Stock",
+      "outOfStock": "Out of Stock"
+    },
+    "quotations": {
+      "title": "Quotations",
+      "create": "Create Quotation",
+      "edit": "Edit Quotation",
+      "send": "Send Quotation",
+      "convert": "Convert to Order",
+      "validUntil": "Valid Until",
+      "lineItems": "Line Items",
+      "subtotal": "Subtotal",
+      "tax": "Tax",
+      "discount": "Discount"
+    },
+    "orders": {
+      "title": "Orders",
+      "create": "Create Order",
+      "edit": "Edit Order",
+      "orderDate": "Order Date",
+      "deliveryDate": "Delivery Date",
+      "customer": "Customer",
+      "orderNumber": "Order Number"
+    }
+  },
+  "invoicing": {
+    "title": "Invoicing",
+    "invoices": {
+      "title": "Invoices",
+      "create": "Create Invoice",
+      "edit": "Edit Invoice",
+      "send": "Send Invoice",
+      "pay": "Record Payment",
+      "invoiceNumber": "Invoice Number",
+      "issueDate": "Issue Date",
+      "dueDate": "Due Date",
+      "paid": "Paid",
+      "unpaid": "Unpaid",
+      "overdue": "Overdue"
+    },
+    "payments": {
+      "title": "Payments",
+      "record": "Record Payment",
+      "paymentDate": "Payment Date",
+      "paymentMethod": "Payment Method",
+      "reference": "Reference",
+      "allocations": "Allocations"
+    }
+  },
+  "inventory": {
+    "title": "Inventory",
+    "stock": {
+      "title": "Stock Levels",
+      "available": "Available",
+      "reserved": "Reserved",
+      "onOrder": "On Order",
+      "reorderPoint": "Reorder Point",
+      "reorderQuantity": "Reorder Quantity"
+    },
+    "warehouses": {
+      "title": "Warehouses",
+      "create": "Create Warehouse",
+      "edit": "Edit Warehouse",
+      "code": "Code",
+      "address": "Address",
+      "zones": "Zones",
+      "bins": "Bins"
+    },
+    "movements": {
+      "title": "Stock Movements",
+      "create": "Create Movement",
+      "type": "Type",
+      "reference": "Reference",
+      "sourceWarehouse": "Source Warehouse",
+      "destinationWarehouse": "Destination Warehouse"
+    }
+  },
+  "accounting": {
+    "title": "Accounting",
+    "accounts": {
+      "title": "Chart of Accounts",
+      "create": "Create Account",
+      "edit": "Edit Account",
+      "code": "Account Code",
+      "type": "Account Type",
+      "balance": "Balance"
+    },
+    "journal": {
+      "title": "Journal Entries",
+      "create": "Create Entry",
+      "edit": "Edit Entry",
+      "post": "Post Entry",
+      "reference": "Reference",
+      "entryDate": "Entry Date",
+      "debit": "Debit",
+      "credit": "Credit"
+    },
+    "reports": {
+      "title": "Financial Reports",
+      "profitLoss": "Profit & Loss",
+      "balanceSheet": "Balance Sheet",
+      "cashFlow": "Cash Flow",
+      "trialBalance": "Trial Balance"
+    }
+  },
+  "hrm": {
+    "title": "Human Resources",
+    "employees": {
+      "title": "Employees",
+      "create": "Create Employee",
+      "edit": "Edit Employee",
+      "employeeId": "Employee ID",
+      "firstName": "First Name",
+      "lastName": "Last Name",
+      "department": "Department",
+      "position": "Position",
+      "hireDate": "Hire Date",
+      "salary": "Salary"
+    },
+    "attendance": {
+      "title": "Attendance",
+      "checkIn": "Check In",
+      "checkOut": "Check Out",
+      "workingHours": "Working Hours",
+      "overtime": "Overtime",
+      "absent": "Absent",
+      "present": "Present"
+    },
+    "payroll": {
+      "title": "Payroll",
+      "run": "Run Payroll",
+      "period": "Pay Period",
+      "grossSalary": "Gross Salary",
+      "deductions": "Deductions",
+      "netSalary": "Net Salary",
+      "payslip": "Payslip"
+    }
+  },
+  "settings": {
+    "title": "Settings",
+    "company": "Company Settings",
+    "users": "User Management",
+    "roles": "Roles & Permissions",
+    "integrations": "Integrations",
+    "preferences": "Preferences",
+    "security": "Security",
+    "backup": "Backup & Restore"
+  },
+  "errors": {
+    "notFound": "Page not found",
+    "unauthorized": "Unauthorized access",
+    "forbidden": "Access forbidden",
+    "serverError": "Internal server error",
+    "networkError": "Network connection error",
+    "validationError": "Validation error",
+    "duplicateEntry": "Duplicate entry",
+    "recordNotFound": "Record not found"
+  },
+  "validation": {
+    "required": "This field is required",
+    "email": "Please enter a valid email address",
+    "minLength": "Minimum length is {{min}} characters",
+    "maxLength": "Maximum length is {{max}} characters",
+    "numeric": "Please enter a valid number",
+    "positive": "Value must be positive",
+    "dateFormat": "Please enter a valid date",
+    "phoneFormat": "Please enter a valid phone number"
+  }
+}

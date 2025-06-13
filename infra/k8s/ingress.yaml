@@ -1,0 +1,81 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: nextcore-ingress
+  annotations:
+    kubernetes.io/ingress.class: "nginx"
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/use-regex: "true"
+    cert-manager.io/cluster-issuer: "letsencrypt-prod"
+spec:
+  tls:
+  - hosts:
+    - nextcore-erp.example.com
+    secretName: nextcore-tls
+  rules:
+  - host: nextcore-erp.example.com
+    http:
+      paths:
+      - path: /api/auth
+        pathType: Prefix
+        backend:
+          service:
+            name: auth-service
+            port:
+              number: 80
+      - path: /api/crm
+        pathType: Prefix
+        backend:
+          service:
+            name: crm-service
+            port:
+              number: 80
+      - path: /api/sales
+        pathType: Prefix
+        backend:
+          service:
+            name: sales-service
+            port:
+              number: 80
+      - path: /api/invoicing
+        pathType: Prefix
+        backend:
+          service:
+            name: invoicing-service
+            port:
+              number: 80
+      - path: /api/inventory
+        pathType: Prefix
+        backend:
+          service:
+            name: inventory-service
+            port:
+              number: 80
+      - path: /api/accounting
+        pathType: Prefix
+        backend:
+          service:
+            name: accounting-service
+            port:
+              number: 80
+      - path: /api/hrm
+        pathType: Prefix
+        backend:
+          service:
+            name: hrm-service
+            port:
+              number: 80
+      - path: /api/workflow
+        pathType: Prefix
+        backend:
+          service:
+            name: workflow-service
+            port:
+              number: 80
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: frontend
+            port:
+              number: 80

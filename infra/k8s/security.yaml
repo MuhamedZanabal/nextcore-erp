@@ -1,0 +1,105 @@
+apiVersion: v1
+kind: Secret
+metadata:
+  name: nextcore-secrets
+type: Opaque
+data:
+  # Base64 encoded values (replace with actual values in production)
+  db-password: bmV4dGNvcmU=  # nextcore
+  jwt-secret: c3VwZXItc2VjcmV0LWp3dC1rZXktZm9yLW5leHRjb3JlLWVycA==  # super-secret-jwt-key-for-nextcore-erp
+  redis-password: bmV4dGNvcmU=  # nextcore
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: nextcore-config
+data:
+  NODE_ENV: "production"
+  DB_HOST: "postgresql"
+  DB_PORT: "5432"
+  DB_USERNAME: "nextcore"
+  DB_DATABASE: "nextcore"
+  REDIS_URL: "redis://redis:6379"
+  NATS_URL: "nats://nats:4222"
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ServiceAccount
+metadata:
+  name: nextcore-service-account
+  namespace: default
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: nextcore-cluster-role
+rules:
+- apiGroups: [""]
+  resources: ["pods", "services", "endpoints"]
+  verbs: ["get", "list", "watch"]
+- apiGroups: ["apps"]
+  resources: ["deployments", "replicasets"]
+  verbs: ["get", "list", "watch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: nextcore-cluster-role-binding
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: nextcore-cluster-role
+subjects:
+- kind: ServiceAccount
+  name: nextcore-service-account
+  namespace: default
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: nextcore-network-policy
+spec:
+  podSelector:
+    matchLabels:
+      component: backend
+  policyTypes:
+  - Ingress
+  - Egress
+  ingress:
+  - from:
+    - podSelector:
+        matchLabels:
+          app: kong
+    - podSelector:
+        matchLabels:
+          component: frontend
+    ports:
+    - protocol: TCP
+      port: 4000
+    - protocol: TCP
+      port: 4001
+    - protocol: TCP
+      port: 4002
+    - protocol: TCP
+      port: 4003
+  egress:
+  - to:
+    - podSelector:
+        matchLabels:
+          app: postgresql
+    ports:
+    - protocol: TCP
+      port: 5432
+  - to:
+    - podSelector:
+        matchLabels:
+          app: redis
+    ports:
+    - protocol: TCP
+      port: 6379
+  - to:
+    - podSelector:
+        matchLabels:
+          app: nats
+    ports:
+    - protocol: TCP
+      port: 4222

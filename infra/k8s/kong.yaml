@@ -1,0 +1,177 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: kong
+  labels:
+    app: kong
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: kong
+  template:
+    metadata:
+      labels:
+        app: kong
+    spec:
+      containers:
+      - name: kong
+        image: kong:3.0
+        env:
+        - name: KONG_DATABASE
+          value: "off"
+        - name: KONG_DECLARATIVE_CONFIG
+          value: "/kong/kong.yml"
+        - name: KONG_PROXY_ACCESS_LOG
+          value: "/dev/stdout"
+        - name: KONG_ADMIN_ACCESS_LOG
+          value: "/dev/stdout"
+        - name: KONG_PROXY_ERROR_LOG
+          value: "/dev/stderr"
+        - name: KONG_ADMIN_ERROR_LOG
+          value: "/dev/stderr"
+        - name: KONG_ADMIN_LISTEN
+          value: "0.0.0.0:8001, 0.0.0.0:8444 ssl"
+        ports:
+        - name: proxy
+          containerPort: 8000
+        - name: proxy-ssl
+          containerPort: 8443
+        - name: admin
+          containerPort: 8001
+        - name: admin-ssl
+          containerPort: 8444
+        volumeMounts:
+        - name: kong-config
+          mountPath: /kong
+        resources:
+          limits:
+            cpu: "500m"
+            memory: "512Mi"
+          requests:
+            cpu: "100m"
+            memory: "128Mi"
+        livenessProbe:
+          httpGet:
+            path: /status
+            port: 8001
+          initialDelaySeconds: 30
+          periodSeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /status
+            port: 8001
+          initialDelaySeconds: 5
+          periodSeconds: 5
+      volumes:
+      - name: kong-config
+        configMap:
+          name: kong-config
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: kong
+spec:
+  selector:
+    app: kong
+  ports:
+  - name: proxy
+    port: 80
+    targetPort: 8000
+  - name: proxy-ssl
+    port: 443
+    targetPort: 8443
+  type: LoadBalancer
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: kong-config
+data:
+  kong.yml: |
+    _format_version: "3.0"
+    services:
+      - name: auth-service
+        url: http://auth-service
+        routes:
+          - name: auth-api
+            paths:
+              - /api/auth
+      - name: crm-service
+        url: http://crm-service
+        routes:
+          - name: crm-api
+            paths:
+              - /api/crm
+      - name: sales-service
+        url: http://sales-service
+        routes:
+          - name: sales-api
+            paths:
+              - /api/sales
+      - name: invoicing-service
+        url: http://invoicing-service
+        routes:
+          - name: invoicing-api
+            paths:
+              - /api/invoicing
+      - name: inventory-service
+        url: http://inventory-service
+        routes:
+          - name: inventory-api
+            paths:
+              - /api/inventory
+      - name: accounting-service
+        url: http://accounting-service
+        routes:
+          - name: accounting-api
+            paths:
+              - /api/accounting
+      - name: hrm-service
+        url: http://hrm-service
+        routes:
+          - name: hrm-api
+            paths:
+              - /api/hrm
+      - name: workflow-service
+        url: http://workflow-service
+        routes:
+          - name: workflow-api
+            paths:
+              - /api/workflow
+      - name: frontend
+        url: http://frontend
+        routes:
+          - name: frontend
+            paths:
+              - /
+    plugins:
+      - name: cors
+        config:
+          origins:
+            - "*"
+          methods:
+            - GET
+            - POST
+            - PUT
+            - PATCH
+            - DELETE
+            - OPTIONS
+          headers:
+            - Accept
+            - Accept-Version
+            - Content-Length
+            - Content-MD5
+            - Content-Type
+            - Date
+            - X-Auth-Token
+            - Authorization
+          exposed_headers:
+            - X-Auth-Token
+          credentials: true
+          max_age: 3600
+      - name: rate-limiting
+        config:
+          minute: 100
+          policy: local
