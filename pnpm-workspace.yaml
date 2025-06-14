@@ -1,4 +1,8 @@
 packages:
-  - 'services/*'
-  - 'frontend/*'
-  - 'shared/*'
+  - services/*
+  - frontend/*
+  - shared/*
+ignoredBuiltDependencies:
+  - '@nestjs/core'
+  - bcrypt
+  - esbuild

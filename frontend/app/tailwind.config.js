@@ -33,8 +33,14 @@ export default {
           900: '#4c1d95',
           950: '#2e1065',
         },
+        border: '#e5e7eb', // Added border color for border-border class
+        background: '#f9fafb', // Added background color for bg-background class
+        'text-foreground': '#111827', // Flat key for Tailwind JIT
       },
     },
   },
   plugins: [],
+  safelist: [
+    'text-foreground',
+  ],
 }
