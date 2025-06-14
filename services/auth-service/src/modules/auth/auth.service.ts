@@ -1,41 +1,35 @@
 import { Injectable, UnauthorizedException, ConflictException, BadRequestException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
-import { User } from '../users/entities/user.entity';
-import { Tenant } from '../tenants/entities/tenant.entity';
-import { Role } from '../roles/entities/role.entity';
 import { LoginDto } from './dto/login.dto';
 import { RegisterDto } from './dto/register.dto';
 import { TokenDto } from './dto/token.dto';
+import { getSupabaseClient } from '../../supabaseClient';
 
 @Injectable()
 export class AuthService {
   constructor(
-    @InjectRepository(User)
-    private usersRepository: Repository<User>,
-    @InjectRepository(Tenant)
-    private tenantsRepository: Repository<Tenant>,
-    @InjectRepository(Role)
-    private rolesRepository: Repository<Role>,
     private jwtService: JwtService,
     private configService: ConfigService,
   ) {}
 
   async login(loginDto: LoginDto): Promise<TokenDto> {
     const { email, password } = loginDto;
-    
-    const user = await this.usersRepository.findOne({
-      where: { email },
-      relations: ['roles'],
-    });
+    const supabase = getSupabaseClient();
+    // Supabase: fetch user by email
+    const { data: user, error } = await supabase
+      .from('users')
+      .select('*')
+      .eq('email', email)
+      .single();
 
-    if (!user) {
+    if (error || !user) {
       throw new UnauthorizedException('Invalid credentials');
     }
 
-    const isPasswordValid = await user.validatePassword(password);
+    // Validate password (bcrypt)
+    const bcrypt = require('bcrypt');
+    const isPasswordValid = await bcrypt.compare(password, user.password);
     if (!isPasswordValid) {
       throw new UnauthorizedException('Invalid credentials');
     }
@@ -44,9 +38,15 @@ export class AuthService {
       throw new UnauthorizedException('User account is inactive');
     }
 
-    // Update last login timestamp
-    user.lastLoginAt = new Date();
-    await this.usersRepository.save(user);
+    // Update last login timestamp in Supabase
+    await supabase
+      .from('users')
+      .update({ lastLoginAt: new Date().toISOString() })
+      .eq('id', user.id);
+
+    // TODO: Fetch roles from Supabase and attach to user object
+    // For now, set roles to []
+    user.roles = [];
 
     return this.generateTokens(user);
   }
