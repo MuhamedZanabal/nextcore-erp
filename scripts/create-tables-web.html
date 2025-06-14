@@ -1,0 +1,419 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NextCore ERP - Supabase Table Creator</title>
+    <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .container { max-width: 1200px; margin: 0 auto; }
+        .status { padding: 10px; margin: 10px 0; border-radius: 5px; }
+        .success { background-color: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+        .error { background-color: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+        .warning { background-color: #fff3cd; color: #856404; border: 1px solid #ffeaa7; }
+        .info { background-color: #d1ecf1; color: #0c5460; border: 1px solid #bee5eb; }
+        button { padding: 10px 20px; margin: 5px; background: #007bff; color: white; border: none; border-radius: 5px; cursor: pointer; }
+        button:hover { background: #0056b3; }
+        button:disabled { background: #6c757d; cursor: not-allowed; }
+        .sql-block { background: #f8f9fa; padding: 15px; border-radius: 5px; margin: 10px 0; font-family: monospace; white-space: pre-wrap; }
+        .progress { width: 100%; background-color: #e9ecef; border-radius: 5px; margin: 10px 0; }
+        .progress-bar { height: 20px; background-color: #007bff; border-radius: 5px; transition: width 0.3s; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>NextCore ERP - Supabase Table Creator</h1>
+        <p>This tool will create all the necessary tables for NextCore ERP in your Supabase database.</p>
+        
+        <div class="status info">
+            <strong>Supabase Project:</strong> https://epdyjgywuuuriaruuysf.supabase.co
+        </div>
+
+        <div id="status-container"></div>
+        
+        <div class="progress">
+            <div id="progress-bar" class="progress-bar" style="width: 0%"></div>
+        </div>
+        
+        <button id="start-migration" onclick="startMigration()">Start Migration</button>
+        <button id="verify-tables" onclick="verifyTables()" disabled>Verify Tables</button>
+        <button id="clear-log" onclick="clearLog()">Clear Log</button>
+        
+        <div id="log-container"></div>
+    </div>
+
+    <script>
+        const supabaseUrl = 'https://epdyjgywuuuriaruuysf.supabase.co';
+        const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVwZHlqZ3l3dXV1cmlhcnV1eXNmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDk4NDk5MTEsImV4cCI6MjA2NTQyNTkxMX0.EH_Scpym9uo-OPG-m47E6bwnAGPEDt-f7-hV3r8hdgQ';
+        
+        const supabase = window.supabase.createClient(supabaseUrl, supabaseKey);
+        
+        function log(message, type = 'info') {
+            const container = document.getElementById('log-container');
+            const div = document.createElement('div');
+            div.className = `status ${type}`;
+            div.innerHTML = `<strong>${new Date().toLocaleTimeString()}:</strong> ${message}`;
+            container.appendChild(div);
+            container.scrollTop = container.scrollHeight;
+        }
+        
+        function updateProgress(current, total) {
+            const percentage = (current / total) * 100;
+            document.getElementById('progress-bar').style.width = percentage + '%';
+        }
+        
+        function clearLog() {
+            document.getElementById('log-container').innerHTML = '';
+            document.getElementById('progress-bar').style.width = '0%';
+        }
+        
+        // SQL statements for creating tables
+        const sqlStatements = [
+            // Enable extensions
+            `CREATE EXTENSION IF NOT EXISTS "uuid-ossp"`,
+            `CREATE EXTENSION IF NOT EXISTS "pgcrypto"`,
+            
+            // Create update function
+            `CREATE OR REPLACE FUNCTION update_updated_at_column()
+             RETURNS TRIGGER AS $$
+             BEGIN
+                 NEW."updatedAt" = CURRENT_TIMESTAMP;
+                 RETURN NEW;
+             END;
+             $$ language 'plpgsql'`,
+            
+            // Auth Service Tables
+            `CREATE TABLE IF NOT EXISTS tenants (
+                id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+                name VARCHAR NOT NULL UNIQUE,
+                slug VARCHAR NOT NULL UNIQUE,
+                domain VARCHAR,
+                "isActive" BOOLEAN DEFAULT true,
+                settings JSONB,
+                "planId" VARCHAR,
+                "planExpiresAt" TIMESTAMP,
+                "createdAt" TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                "updatedAt" TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )`,
+            
+            `CREATE TABLE IF NOT EXISTS users (
+                id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+                "firstName" VARCHAR NOT NULL,
+                "lastName" VARCHAR NOT NULL,
+                email VARCHAR NOT NULL UNIQUE,
+                password VARCHAR,
+                "isEmailVerified" BOOLEAN DEFAULT false,
+                "isActive" BOOLEAN DEFAULT true,
+                "lastLoginAt" TIMESTAMP,
+                "tenantId" UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
+                "createdAt" TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                "updatedAt" TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )`,
+            
+            `CREATE TABLE IF NOT EXISTS roles (
+                id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+                name VARCHAR NOT NULL,
+                description VARCHAR,
+                permissions JSONB DEFAULT '[]'::jsonb,
+                "isSystemRole" BOOLEAN DEFAULT false,
+                "tenantId" UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
+                "createdAt" TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                "updatedAt" TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )`,
+            
+            `CREATE TABLE IF NOT EXISTS user_roles (
+                user_id UUID REFERENCES users(id) ON DELETE CASCADE,
+                role_id UUID REFERENCES roles(id) ON DELETE CASCADE,
+                PRIMARY KEY (user_id, role_id)
+            )`,
+            
+            // CRM Service Tables
+            `CREATE TABLE IF NOT EXISTS contacts (
+                id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+                "tenantId" UUID NOT NULL,
+                "firstName" VARCHAR NOT NULL,
+                "lastName" VARCHAR NOT NULL,
+                email VARCHAR NOT NULL UNIQUE,
+                phone VARCHAR,
+                company VARCHAR,
+                "jobTitle" VARCHAR,
+                "customFields" JSONB,
+                "ownerId" UUID,
+                "createdById" UUID,
+                "createdAt" TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                "updatedAt" TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )`,
+            
+            `CREATE TABLE IF NOT EXISTS leads (
+                id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+                "tenantId" UUID NOT NULL,
+                "contactId" UUID NOT NULL REFERENCES contacts(id) ON DELETE CASCADE,
+                status VARCHAR DEFAULT 'new',
+                score FLOAT DEFAULT 0,
+                source VARCHAR,
+                "campaignId" UUID,
+                "ownerId" UUID,
+                "createdById" UUID,
+                "createdAt" TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                "updatedAt" TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )`,
+            
+            // Inventory Service Tables
+            `CREATE TABLE IF NOT EXISTS products (
+                id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+                "tenantId" UUID NOT NULL,
+                name VARCHAR NOT NULL,
+                sku VARCHAR NOT NULL UNIQUE,
+                description TEXT,
+                "listPrice" DECIMAL(10,2),
+                currency VARCHAR DEFAULT 'USD',
+                active BOOLEAN DEFAULT true,
+                "trackInventory" BOOLEAN DEFAULT true,
+                "inventoryMethod" VARCHAR DEFAULT 'fifo',
+                "trackSerialNumbers" BOOLEAN DEFAULT false,
+                "trackLots" BOOLEAN DEFAULT false,
+                "reorderPoint" DECIMAL(10,2) DEFAULT 0,
+                "reorderQuantity" DECIMAL(10,2) DEFAULT 0,
+                attributes JSONB,
+                "categoryId" UUID,
+                "createdAt" TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                "updatedAt" TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )`,
+            
+            `CREATE TABLE IF NOT EXISTS warehouses (
+                id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+                "tenantId" UUID NOT NULL,
+                name VARCHAR NOT NULL,
+                code VARCHAR NOT NULL UNIQUE,
+                address TEXT,
+                active BOOLEAN DEFAULT true,
+                "operatingHours" JSONB,
+                capabilities JSONB,
+                "createdAt" TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                "updatedAt" TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )`,
+            
+            // Sales Service Tables
+            `CREATE TABLE IF NOT EXISTS orders (
+                id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+                "tenantId" UUID NOT NULL,
+                "customerId" UUID NOT NULL,
+                "quotationId" UUID,
+                status VARCHAR DEFAULT 'new',
+                "orderDate" DATE NOT NULL,
+                "expectedDeliveryDate" DATE,
+                subtotal DECIMAL(10,2) DEFAULT 0,
+                "taxAmount" DECIMAL(10,2) DEFAULT 0,
+                "discountAmount" DECIMAL(10,2) DEFAULT 0,
+                "shippingAmount" DECIMAL(10,2) DEFAULT 0,
+                total DECIMAL(10,2) DEFAULT 0,
+                currency VARCHAR DEFAULT 'USD',
+                "shippingAddress" JSONB,
+                "billingAddress" JSONB,
+                notes TEXT,
+                "createdById" UUID,
+                "createdAt" TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                "updatedAt" TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )`,
+            
+            // Invoicing Service Tables
+            `CREATE TABLE IF NOT EXISTS invoices (
+                id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+                "tenantId" UUID NOT NULL,
+                "invoiceNumber" VARCHAR NOT NULL UNIQUE,
+                "customerId" UUID NOT NULL,
+                "orderId" UUID,
+                "issueDate" DATE NOT NULL,
+                "dueDate" DATE NOT NULL,
+                status VARCHAR DEFAULT 'draft',
+                subtotal DECIMAL(10,2) DEFAULT 0,
+                "taxAmount" DECIMAL(10,2) DEFAULT 0,
+                "discountAmount" DECIMAL(10,2) DEFAULT 0,
+                total DECIMAL(10,2) DEFAULT 0,
+                currency VARCHAR DEFAULT 'USD',
+                notes TEXT,
+                "createdById" UUID,
+                "createdAt" TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                "updatedAt" TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )`,
+            
+            // Accounting Service Tables
+            `CREATE TABLE IF NOT EXISTS accounts (
+                id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+                "tenantId" UUID NOT NULL,
+                code VARCHAR NOT NULL UNIQUE,
+                name VARCHAR NOT NULL,
+                type VARCHAR NOT NULL,
+                category VARCHAR NOT NULL,
+                "isBankAccount" BOOLEAN DEFAULT false,
+                active BOOLEAN DEFAULT true,
+                "parentId" UUID REFERENCES accounts(id) ON DELETE SET NULL,
+                description TEXT,
+                balance DECIMAL(15,2) DEFAULT 0,
+                "debitBalance" DECIMAL(15,2) DEFAULT 0,
+                "creditBalance" DECIMAL(15,2) DEFAULT 0,
+                "createdAt" TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                "updatedAt" TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )`,
+            
+            // HRM Service Tables
+            `CREATE TABLE IF NOT EXISTS employees (
+                id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+                "tenantId" UUID NOT NULL,
+                "employeeId" VARCHAR NOT NULL UNIQUE,
+                "firstName" VARCHAR NOT NULL,
+                "lastName" VARCHAR NOT NULL,
+                email VARCHAR NOT NULL UNIQUE,
+                phone VARCHAR,
+                "dateOfBirth" DATE,
+                "hireDate" DATE NOT NULL,
+                "terminationDate" DATE,
+                status VARCHAR DEFAULT 'active',
+                "departmentId" UUID,
+                "positionId" UUID,
+                "managerId" UUID REFERENCES employees(id) ON DELETE SET NULL,
+                "userId" UUID,
+                "baseSalary" DECIMAL(10,2),
+                currency VARCHAR DEFAULT 'USD',
+                "payFrequency" VARCHAR DEFAULT 'monthly',
+                "personalInfo" JSONB,
+                "emergencyContacts" JSONB,
+                "bankDetails" JSONB,
+                "createdAt" TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                "updatedAt" TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )`,
+            
+            // Create indexes
+            `CREATE INDEX IF NOT EXISTS idx_users_tenant_id ON users("tenantId")`,
+            `CREATE INDEX IF NOT EXISTS idx_users_email ON users(email)`,
+            `CREATE INDEX IF NOT EXISTS idx_contacts_tenant_id ON contacts("tenantId")`,
+            `CREATE INDEX IF NOT EXISTS idx_contacts_email ON contacts(email)`,
+            `CREATE INDEX IF NOT EXISTS idx_products_tenant_id ON products("tenantId")`,
+            `CREATE INDEX IF NOT EXISTS idx_products_sku ON products(sku)`,
+            `CREATE INDEX IF NOT EXISTS idx_orders_tenant_id ON orders("tenantId")`,
+            `CREATE INDEX IF NOT EXISTS idx_invoices_tenant_id ON invoices("tenantId")`,
+            `CREATE INDEX IF NOT EXISTS idx_accounts_tenant_id ON accounts("tenantId")`,
+            `CREATE INDEX IF NOT EXISTS idx_employees_tenant_id ON employees("tenantId")`,
+            
+            // Create triggers
+            `CREATE TRIGGER update_tenants_updated_at BEFORE UPDATE ON tenants FOR EACH ROW EXECUTE FUNCTION update_updated_at_column()`,
+            `CREATE TRIGGER update_users_updated_at BEFORE UPDATE ON users FOR EACH ROW EXECUTE FUNCTION update_updated_at_column()`,
+            `CREATE TRIGGER update_contacts_updated_at BEFORE UPDATE ON contacts FOR EACH ROW EXECUTE FUNCTION update_updated_at_column()`,
+            `CREATE TRIGGER update_products_updated_at BEFORE UPDATE ON products FOR EACH ROW EXECUTE FUNCTION update_updated_at_column()`,
+            `CREATE TRIGGER update_orders_updated_at BEFORE UPDATE ON orders FOR EACH ROW EXECUTE FUNCTION update_updated_at_column()`,
+            `CREATE TRIGGER update_invoices_updated_at BEFORE UPDATE ON invoices FOR EACH ROW EXECUTE FUNCTION update_updated_at_column()`,
+            `CREATE TRIGGER update_accounts_updated_at BEFORE UPDATE ON accounts FOR EACH ROW EXECUTE FUNCTION update_updated_at_column()`,
+            `CREATE TRIGGER update_employees_updated_at BEFORE UPDATE ON employees FOR EACH ROW EXECUTE FUNCTION update_updated_at_column()`
+        ];
+        
+        async function startMigration() {
+            const startBtn = document.getElementById('start-migration');
+            const verifyBtn = document.getElementById('verify-tables');
+            
+            startBtn.disabled = true;
+            startBtn.textContent = 'Running Migration...';
+            
+            log('🚀 Starting NextCore ERP database migration...', 'info');
+            log(`📊 Total SQL statements to execute: ${sqlStatements.length}`, 'info');
+            
+            let successCount = 0;
+            let errorCount = 0;
+            
+            for (let i = 0; i < sqlStatements.length; i++) {
+                const statement = sqlStatements[i];
+                updateProgress(i + 1, sqlStatements.length);
+                
+                log(`⏳ Executing statement ${i + 1}/${sqlStatements.length}...`, 'info');
+                
+                try {
+                    // Use Supabase's RPC to execute SQL
+                    const { data, error } = await supabase.rpc('exec_sql', {
+                        sql: statement
+                    });
+                    
+                    if (error) {
+                        if (error.message.includes('already exists') || error.message.includes('does not exist')) {
+                            log(`⚠️ Statement ${i + 1}: ${error.message} (continuing...)`, 'warning');
+                        } else {
+                            log(`❌ Error in statement ${i + 1}: ${error.message}`, 'error');
+                            errorCount++;
+                        }
+                    } else {
+                        log(`✅ Statement ${i + 1} executed successfully`, 'success');
+                        successCount++;
+                    }
+                } catch (err) {
+                    log(`❌ Exception in statement ${i + 1}: ${err.message}`, 'error');
+                    errorCount++;
+                }
+                
+                // Small delay to avoid overwhelming the API
+                await new Promise(resolve => setTimeout(resolve, 200));
+            }
+            
+            log(`📊 Migration completed! Success: ${successCount}, Errors: ${errorCount}`, 
+                errorCount === 0 ? 'success' : 'warning');
+            
+            startBtn.disabled = false;
+            startBtn.textContent = 'Start Migration';
+            verifyBtn.disabled = false;
+            
+            if (errorCount === 0) {
+                log('🎉 All tables created successfully! You can now verify the tables.', 'success');
+            } else {
+                log('⚠️ Migration completed with some errors. Please check the Supabase dashboard.', 'warning');
+            }
+        }
+        
+        async function verifyTables() {
+            log('🔍 Verifying table creation...', 'info');
+            
+            const tablesToCheck = [
+                'tenants', 'users', 'roles', 'user_roles',
+                'contacts', 'leads', 
+                'products', 'warehouses',
+                'orders', 'invoices', 'accounts', 'employees'
+            ];
+            
+            let verifiedCount = 0;
+            
+            for (const table of tablesToCheck) {
+                try {
+                    const { data, error } = await supabase
+                        .from(table)
+                        .select('*')
+                        .limit(1);
+                    
+                    if (error) {
+                        log(`❌ Table '${table}' not accessible: ${error.message}`, 'error');
+                    } else {
+                        log(`✅ Table '${table}' exists and is accessible`, 'success');
+                        verifiedCount++;
+                    }
+                } catch (err) {
+                    log(`❌ Error checking table '${table}': ${err.message}`, 'error');
+                }
+            }
+            
+            log(`📊 Verification complete: ${verifiedCount}/${tablesToCheck.length} tables verified`, 
+                verifiedCount === tablesToCheck.length ? 'success' : 'warning');
+        }
+        
+        // Test connection on page load
+        window.addEventListener('load', async () => {
+            log('🔌 Testing Supabase connection...', 'info');
+            try {
+                const { data, error } = await supabase.auth.getSession();
+                if (error) {
+                    log(`❌ Connection test failed: ${error.message}`, 'error');
+                } else {
+                    log('✅ Supabase connection successful!', 'success');
+                }
+            } catch (err) {
+                log(`❌ Connection test error: ${err.message}`, 'error');
+            }
+        });
+    </script>
+</body>
+</html>

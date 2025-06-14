@@ -1,0 +1,460 @@
+version: '3.8'
+
+services:
+  # Message Broker - NATS
+  nats:
+    image: nats:2.10-alpine
+    container_name: nextcore-nats
+    ports:
+      - "4222:4222"
+      - "8222:8222"
+      - "6222:6222"
+    command: [
+      "--jetstream",
+      "--store_dir=/data",
+      "--http_port=8222",
+      "--cluster_name=nextcore",
+      "--max_payload=1MB",
+      "--max_pending=64MB"
+    ]
+    volumes:
+      - nats_data:/data
+    networks:
+      - nextcore-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8222/healthz"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Cache - Redis
+  redis:
+    image: redis:7-alpine
+    container_name: nextcore-redis
+    ports:
+      - "6379:6379"
+    command: redis-server --appendonly yes --maxmemory 512mb --maxmemory-policy allkeys-lru
+    volumes:
+      - redis_data:/data
+    networks:
+      - nextcore-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # API Gateway - Kong
+  kong-database:
+    image: postgres:15-alpine
+    container_name: nextcore-kong-db
+    environment:
+      POSTGRES_DB: kong
+      POSTGRES_USER: kong
+      POSTGRES_PASSWORD: kong_password
+    volumes:
+      - kong_db_data:/var/lib/postgresql/data
+    networks:
+      - nextcore-network
+    restart: unless-stopped
+
+  kong-migrations:
+    image: kong:3.4
+    container_name: nextcore-kong-migrations
+    command: kong migrations bootstrap
+    depends_on:
+      - kong-database
+    environment:
+      KONG_DATABASE: postgres
+      KONG_PG_HOST: kong-database
+      KONG_PG_DATABASE: kong
+      KONG_PG_USER: kong
+      KONG_PG_PASSWORD: kong_password
+    networks:
+      - nextcore-network
+    restart: "no"
+
+  kong:
+    image: kong:3.4
+    container_name: nextcore-kong
+    depends_on:
+      - kong-database
+      - kong-migrations
+    environment:
+      KONG_DATABASE: postgres
+      KONG_PG_HOST: kong-database
+      KONG_PG_DATABASE: kong
+      KONG_PG_USER: kong
+      KONG_PG_PASSWORD: kong_password
+      KONG_PROXY_ACCESS_LOG: /dev/stdout
+      KONG_ADMIN_ACCESS_LOG: /dev/stdout
+      KONG_PROXY_ERROR_LOG: /dev/stderr
+      KONG_ADMIN_ERROR_LOG: /dev/stderr
+      KONG_ADMIN_LISTEN: 0.0.0.0:8001
+      KONG_ADMIN_GUI_URL: http://localhost:8002
+      KONG_DECLARATIVE_CONFIG: /opt/kong/kong.yml
+    ports:
+      - "8000:8000"   # Proxy
+      - "8443:8443"   # Proxy SSL
+      - "8001:8001"   # Admin API
+      - "8444:8444"   # Admin API SSL
+      - "8002:8002"   # Manager
+      - "8445:8445"   # Manager SSL
+    volumes:
+      - ./infra/kong/kong-supabase.yml:/opt/kong/kong.yml:ro
+    networks:
+      - nextcore-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "kong", "health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Auth Service
+  auth-service:
+    build:
+      context: ./services/auth-service
+      dockerfile: Dockerfile
+    container_name: nextcore-auth-service
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=production
+      - PORT=3000
+      - DB_HOST=db.epdyjgywuuuriaruuysf.supabase.co
+      - DB_PORT=5432
+      - DB_USERNAME=postgres
+      - DB_PASSWORD=Hacker@321
+      - DB_DATABASE=postgres
+      - DB_SSL=true
+      - SUPABASE_URL=https://epdyjgywuuuriaruuysf.supabase.co
+      - SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVwZHlqZ3l3dXV1cmlhcnV1eXNmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDk4NDk5MTEsImV4cCI6MjA2NTQyNTkxMX0.EH_Scpym9uo-OPG-m47E6bwnAGPEDt-f7-hV3r8hdgQ
+      - JWT_ACCESS_SECRET=nextcore_access_secret_key_change_in_production
+      - JWT_REFRESH_SECRET=nextcore_refresh_secret_key_change_in_production
+      - REDIS_URL=redis://redis:6379
+      - NATS_URL=nats://nats:4222
+    depends_on:
+      - redis
+      - nats
+    networks:
+      - nextcore-network
+    restart: unless-stopped
+
+  # CRM Service
+  crm-service:
+    build:
+      context: ./services/crm-service
+      dockerfile: Dockerfile
+    container_name: nextcore-crm-service
+    ports:
+      - "3001:3001"
+    environment:
+      - NODE_ENV=production
+      - PORT=3001
+      - DB_HOST=db.epdyjgywuuuriaruuysf.supabase.co
+      - DB_PORT=5432
+      - DB_USERNAME=postgres
+      - DB_PASSWORD=Hacker@321
+      - DB_DATABASE=postgres
+      - DB_SSL=true
+      - SUPABASE_URL=https://epdyjgywuuuriaruuysf.supabase.co
+      - SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVwZHlqZ3l3dXV1cmlhcnV1eXNmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDk4NDk5MTEsImV4cCI6MjA2NTQyNTkxMX0.EH_Scpym9uo-OPG-m47E6bwnAGPEDt-f7-hV3r8hdgQ
+      - REDIS_URL=redis://redis:6379
+      - NATS_URL=nats://nats:4222
+    depends_on:
+      - redis
+      - nats
+    networks:
+      - nextcore-network
+    restart: unless-stopped
+
+  # Sales Service
+  sales-service:
+    build:
+      context: ./services/sales-service
+      dockerfile: Dockerfile
+    container_name: nextcore-sales-service
+    ports:
+      - "3002:3002"
+    environment:
+      - NODE_ENV=production
+      - PORT=3002
+      - DB_HOST=db.epdyjgywuuuriaruuysf.supabase.co
+      - DB_PORT=5432
+      - DB_USERNAME=postgres
+      - DB_PASSWORD=Hacker@321
+      - DB_DATABASE=postgres
+      - DB_SSL=true
+      - SUPABASE_URL=https://epdyjgywuuuriaruuysf.supabase.co
+      - SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVwZHlqZ3l3dXV1cmlhcnV1eXNmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDk4NDk5MTEsImV4cCI6MjA2NTQyNTkxMX0.EH_Scpym9uo-OPG-m47E6bwnAGPEDt-f7-hV3r8hdgQ
+      - REDIS_URL=redis://redis:6379
+      - NATS_URL=nats://nats:4222
+    depends_on:
+      - redis
+      - nats
+    networks:
+      - nextcore-network
+    restart: unless-stopped
+
+  # Invoicing Service
+  invoicing-service:
+    build:
+      context: ./services/invoicing-service
+      dockerfile: Dockerfile
+    container_name: nextcore-invoicing-service
+    ports:
+      - "3003:3003"
+    environment:
+      - NODE_ENV=production
+      - PORT=3003
+      - DB_HOST=db.epdyjgywuuuriaruuysf.supabase.co
+      - DB_PORT=5432
+      - DB_USERNAME=postgres
+      - DB_PASSWORD=Hacker@321
+      - DB_DATABASE=postgres
+      - DB_SSL=true
+      - SUPABASE_URL=https://epdyjgywuuuriaruuysf.supabase.co
+      - SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVwZHlqZ3l3dXV1cmlhcnV1eXNmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDk4NDk5MTEsImV4cCI6MjA2NTQyNTkxMX0.EH_Scpym9uo-OPG-m47E6bwnAGPEDt-f7-hV3r8hdgQ
+      - REDIS_URL=redis://redis:6379
+      - NATS_URL=nats://nats:4222
+    depends_on:
+      - redis
+      - nats
+    networks:
+      - nextcore-network
+    restart: unless-stopped
+
+  # Inventory Service
+  inventory-service:
+    build:
+      context: ./services/inventory-service
+      dockerfile: Dockerfile
+    container_name: nextcore-inventory-service
+    ports:
+      - "3004:3004"
+    environment:
+      - NODE_ENV=production
+      - PORT=3004
+      - DB_HOST=db.epdyjgywuuuriaruuysf.supabase.co
+      - DB_PORT=5432
+      - DB_USERNAME=postgres
+      - DB_PASSWORD=Hacker@321
+      - DB_DATABASE=postgres
+      - DB_SSL=true
+      - SUPABASE_URL=https://epdyjgywuuuriaruuysf.supabase.co
+      - SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVwZHlqZ3l3dXV1cmlhcnV1eXNmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDk4NDk5MTEsImV4cCI6MjA2NTQyNTkxMX0.EH_Scpym9uo-OPG-m47E6bwnAGPEDt-f7-hV3r8hdgQ
+      - REDIS_URL=redis://redis:6379
+      - NATS_URL=nats://nats:4222
+    depends_on:
+      - redis
+      - nats
+    networks:
+      - nextcore-network
+    restart: unless-stopped
+
+  # Accounting Service
+  accounting-service:
+    build:
+      context: ./services/accounting-service
+      dockerfile: Dockerfile
+    container_name: nextcore-accounting-service
+    ports:
+      - "3005:3005"
+    environment:
+      - NODE_ENV=production
+      - PORT=3005
+      - DB_HOST=db.epdyjgywuuuriaruuysf.supabase.co
+      - DB_PORT=5432
+      - DB_USERNAME=postgres
+      - DB_PASSWORD=Hacker@321
+      - DB_DATABASE=postgres
+      - DB_SSL=true
+      - SUPABASE_URL=https://epdyjgywuuuriaruuysf.supabase.co
+      - SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVwZHlqZ3l3dXV1cmlhcnV1eXNmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDk4NDk5MTEsImV4cCI6MjA2NTQyNTkxMX0.EH_Scpym9uo-OPG-m47E6bwnAGPEDt-f7-hV3r8hdgQ
+      - REDIS_URL=redis://redis:6379
+      - NATS_URL=nats://nats:4222
+    depends_on:
+      - redis
+      - nats
+    networks:
+      - nextcore-network
+    restart: unless-stopped
+
+  # HRM Service
+  hrm-service:
+    build:
+      context: ./services/hrm-service
+      dockerfile: Dockerfile
+    container_name: nextcore-hrm-service
+    ports:
+      - "3006:3006"
+    environment:
+      - NODE_ENV=production
+      - PORT=3006
+      - DB_HOST=db.epdyjgywuuuriaruuysf.supabase.co
+      - DB_PORT=5432
+      - DB_USERNAME=postgres
+      - DB_PASSWORD=Hacker@321
+      - DB_DATABASE=postgres
+      - DB_SSL=true
+      - SUPABASE_URL=https://epdyjgywuuuriaruuysf.supabase.co
+      - SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVwZHlqZ3l3dXV1cmlhcnV1eXNmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDk4NDk5MTEsImV4cCI6MjA2NTQyNTkxMX0.EH_Scpym9uo-OPG-m47E6bwnAGPEDt-f7-hV3r8hdgQ
+      - REDIS_URL=redis://redis:6379
+      - NATS_URL=nats://nats:4222
+    depends_on:
+      - redis
+      - nats
+    networks:
+      - nextcore-network
+    restart: unless-stopped
+
+  # Workflow Service
+  workflow-service:
+    build:
+      context: ./services/workflow-service
+      dockerfile: Dockerfile
+    container_name: nextcore-workflow-service
+    ports:
+      - "3007:3007"
+    environment:
+      - NODE_ENV=production
+      - PORT=3007
+      - DB_HOST=db.epdyjgywuuuriaruuysf.supabase.co
+      - DB_PORT=5432
+      - DB_USERNAME=postgres
+      - DB_PASSWORD=Hacker@321
+      - DB_DATABASE=postgres
+      - DB_SSL=true
+      - SUPABASE_URL=https://epdyjgywuuuriaruuysf.supabase.co
+      - SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVwZHlqZ3l3dXV1cmlhcnV1eXNmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDk4NDk5MTEsImV4cCI6MjA2NTQyNTkxMX0.EH_Scpym9uo-OPG-m47E6bwnAGPEDt-f7-hV3r8hdgQ
+      - REDIS_URL=redis://redis:6379
+      - NATS_URL=nats://nats:4222
+    depends_on:
+      - redis
+      - nats
+    networks:
+      - nextcore-network
+    restart: unless-stopped
+
+  # Frontend
+  frontend:
+    build:
+      context: ./frontend/app
+      dockerfile: Dockerfile
+    container_name: nextcore-frontend
+    ports:
+      - "12000:12000"
+    environment:
+      - NODE_ENV=production
+      - VITE_API_URL=http://localhost:8000/api
+      - VITE_SUPABASE_URL=https://epdyjgywuuuriaruuysf.supabase.co
+      - VITE_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVwZHlqZ3l3dXV1cmlhcnV1eXNmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDk4NDk5MTEsImV4cCI6MjA2NTQyNTkxMX0.EH_Scpym9uo-OPG-m47E6bwnAGPEDt-f7-hV3r8hdgQ
+    depends_on:
+      - kong
+    networks:
+      - nextcore-network
+    restart: unless-stopped
+
+  # Monitoring - Prometheus
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: nextcore-prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./infra/monitoring/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus_data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/etc/prometheus/console_libraries'
+      - '--web.console.templates=/etc/prometheus/consoles'
+      - '--storage.tsdb.retention.time=200h'
+      - '--web.enable-lifecycle'
+    networks:
+      - nextcore-network
+    restart: unless-stopped
+
+  # Monitoring - Grafana
+  grafana:
+    image: grafana/grafana:latest
+    container_name: nextcore-grafana
+    ports:
+      - "3001:3000"
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=admin123
+      - GF_USERS_ALLOW_SIGN_UP=false
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./infra/monitoring/grafana/provisioning:/etc/grafana/provisioning
+    depends_on:
+      - prometheus
+    networks:
+      - nextcore-network
+    restart: unless-stopped
+
+  # Logging - Elasticsearch
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.11.0
+    container_name: nextcore-elasticsearch
+    environment:
+      - discovery.type=single-node
+      - xpack.security.enabled=false
+      - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
+    ports:
+      - "9200:9200"
+    volumes:
+      - elasticsearch_data:/usr/share/elasticsearch/data
+    networks:
+      - nextcore-network
+    restart: unless-stopped
+
+  # Logging - Logstash
+  logstash:
+    image: docker.elastic.co/logstash/logstash:8.11.0
+    container_name: nextcore-logstash
+    volumes:
+      - ./infra/monitoring/logstash/pipeline:/usr/share/logstash/pipeline:ro
+      - ./infra/monitoring/logstash/config/logstash.yml:/usr/share/logstash/config/logstash.yml:ro
+    ports:
+      - "5044:5044"
+      - "5000:5000/tcp"
+      - "5000:5000/udp"
+      - "9600:9600"
+    environment:
+      LS_JAVA_OPTS: "-Xmx256m -Xms256m"
+    depends_on:
+      - elasticsearch
+    networks:
+      - nextcore-network
+    restart: unless-stopped
+
+  # Logging - Kibana
+  kibana:
+    image: docker.elastic.co/kibana/kibana:8.11.0
+    container_name: nextcore-kibana
+    ports:
+      - "5601:5601"
+    environment:
+      - ELASTICSEARCH_HOSTS=http://elasticsearch:9200
+    depends_on:
+      - elasticsearch
+    networks:
+      - nextcore-network
+    restart: unless-stopped
+
+volumes:
+  nats_data:
+  redis_data:
+  kong_db_data:
+  prometheus_data:
+  grafana_data:
+  elasticsearch_data:
+
+networks:
+  nextcore-network:
+    driver: bridge
