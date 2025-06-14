@@ -1,0 +1,545 @@
+# Kong API Gateway Configuration for NextCore ERP with Supabase
+_format_version: "3.0"
+_transform: true
+
+# Services Configuration
+services:
+  # Auth Service
+  - name: auth-service
+    url: http://auth-service:3000
+    protocol: http
+    host: auth-service
+    port: 3000
+    path: /
+    connect_timeout: 60000
+    write_timeout: 60000
+    read_timeout: 60000
+    retries: 5
+    tags:
+      - auth
+      - microservice
+
+  # CRM Service
+  - name: crm-service
+    url: http://crm-service:3001
+    protocol: http
+    host: crm-service
+    port: 3001
+    path: /
+    connect_timeout: 60000
+    write_timeout: 60000
+    read_timeout: 60000
+    retries: 5
+    tags:
+      - crm
+      - microservice
+
+  # Sales Service
+  - name: sales-service
+    url: http://sales-service:3002
+    protocol: http
+    host: sales-service
+    port: 3002
+    path: /
+    connect_timeout: 60000
+    write_timeout: 60000
+    read_timeout: 60000
+    retries: 5
+    tags:
+      - sales
+      - microservice
+
+  # Invoicing Service
+  - name: invoicing-service
+    url: http://invoicing-service:3003
+    protocol: http
+    host: invoicing-service
+    port: 3003
+    path: /
+    connect_timeout: 60000
+    write_timeout: 60000
+    read_timeout: 60000
+    retries: 5
+    tags:
+      - invoicing
+      - microservice
+
+  # Inventory Service
+  - name: inventory-service
+    url: http://inventory-service:3004
+    protocol: http
+    host: inventory-service
+    port: 3004
+    path: /
+    connect_timeout: 60000
+    write_timeout: 60000
+    read_timeout: 60000
+    retries: 5
+    tags:
+      - inventory
+      - microservice
+
+  # Accounting Service
+  - name: accounting-service
+    url: http://accounting-service:3005
+    protocol: http
+    host: accounting-service
+    port: 3005
+    path: /
+    connect_timeout: 60000
+    write_timeout: 60000
+    read_timeout: 60000
+    retries: 5
+    tags:
+      - accounting
+      - microservice
+
+  # HRM Service
+  - name: hrm-service
+    url: http://hrm-service:3006
+    protocol: http
+    host: hrm-service
+    port: 3006
+    path: /
+    connect_timeout: 60000
+    write_timeout: 60000
+    read_timeout: 60000
+    retries: 5
+    tags:
+      - hrm
+      - microservice
+
+  # Workflow Service
+  - name: workflow-service
+    url: http://workflow-service:3007
+    protocol: http
+    host: workflow-service
+    port: 3007
+    path: /
+    connect_timeout: 60000
+    write_timeout: 60000
+    read_timeout: 60000
+    retries: 5
+    tags:
+      - workflow
+      - microservice
+
+  # Frontend Service
+  - name: frontend-service
+    url: http://frontend:12000
+    protocol: http
+    host: frontend
+    port: 12000
+    path: /
+    connect_timeout: 60000
+    write_timeout: 60000
+    read_timeout: 60000
+    retries: 5
+    tags:
+      - frontend
+      - web
+
+# Routes Configuration
+routes:
+  # Auth Service Routes
+  - name: auth-login
+    service: auth-service
+    paths:
+      - /api/auth/login
+    methods:
+      - POST
+    strip_path: false
+    preserve_host: false
+    tags:
+      - auth
+      - public
+
+  - name: auth-register
+    service: auth-service
+    paths:
+      - /api/auth/register
+    methods:
+      - POST
+    strip_path: false
+    preserve_host: false
+    tags:
+      - auth
+      - public
+
+  - name: auth-routes
+    service: auth-service
+    paths:
+      - /api/auth
+    strip_path: false
+    preserve_host: false
+    tags:
+      - auth
+
+  # CRM Service Routes
+  - name: crm-routes
+    service: crm-service
+    paths:
+      - /api/crm
+    strip_path: false
+    preserve_host: false
+    tags:
+      - crm
+
+  # Sales Service Routes
+  - name: sales-routes
+    service: sales-service
+    paths:
+      - /api/sales
+    strip_path: false
+    preserve_host: false
+    tags:
+      - sales
+
+  # Invoicing Service Routes
+  - name: invoicing-routes
+    service: invoicing-service
+    paths:
+      - /api/invoicing
+    strip_path: false
+    preserve_host: false
+    tags:
+      - invoicing
+
+  # Inventory Service Routes
+  - name: inventory-routes
+    service: inventory-service
+    paths:
+      - /api/inventory
+    strip_path: false
+    preserve_host: false
+    tags:
+      - inventory
+
+  # Accounting Service Routes
+  - name: accounting-routes
+    service: accounting-service
+    paths:
+      - /api/accounting
+    strip_path: false
+    preserve_host: false
+    tags:
+      - accounting
+
+  # HRM Service Routes
+  - name: hrm-routes
+    service: hrm-service
+    paths:
+      - /api/hrm
+    strip_path: false
+    preserve_host: false
+    tags:
+      - hrm
+
+  # Workflow Service Routes
+  - name: workflow-routes
+    service: workflow-service
+    paths:
+      - /api/workflows
+    strip_path: false
+    preserve_host: false
+    tags:
+      - workflow
+
+  # Frontend Routes
+  - name: frontend-routes
+    service: frontend-service
+    paths:
+      - /
+    strip_path: false
+    preserve_host: false
+    tags:
+      - frontend
+
+# Plugins Configuration
+plugins:
+  # Global CORS Plugin
+  - name: cors
+    config:
+      origins:
+        - "*"
+      methods:
+        - GET
+        - POST
+        - PUT
+        - DELETE
+        - PATCH
+        - OPTIONS
+      headers:
+        - Accept
+        - Accept-Version
+        - Content-Length
+        - Content-MD5
+        - Content-Type
+        - Date
+        - Authorization
+        - X-Auth-Token
+        - X-Tenant-ID
+      exposed_headers:
+        - X-Auth-Token
+        - X-Tenant-ID
+      credentials: true
+      max_age: 3600
+    tags:
+      - global
+      - cors
+
+  # Global Rate Limiting
+  - name: rate-limiting
+    config:
+      minute: 1000
+      hour: 10000
+      policy: local
+      fault_tolerant: true
+      hide_client_headers: false
+    tags:
+      - global
+      - rate-limiting
+
+  # Request Size Limiting
+  - name: request-size-limiting
+    config:
+      allowed_payload_size: 10
+    tags:
+      - global
+      - security
+
+  # Response Transformer for API Versioning
+  - name: response-transformer
+    config:
+      add:
+        headers:
+          - "X-API-Version:1.0"
+          - "X-Service:NextCore-ERP"
+    tags:
+      - global
+      - headers
+
+# Consumer Configuration (for API keys if needed)
+consumers:
+  - username: nextcore-frontend
+    custom_id: frontend-app
+    tags:
+      - frontend
+      - app
+
+  - username: nextcore-mobile
+    custom_id: mobile-app
+    tags:
+      - mobile
+      - app
+
+# JWT Plugin for Protected Routes
+plugins:
+  # JWT Authentication for protected routes
+  - name: jwt
+    route: crm-routes
+    config:
+      uri_param_names:
+        - jwt
+      cookie_names:
+        - jwt
+      header_names:
+        - authorization
+      claims_to_verify:
+        - exp
+      key_claim_name: iss
+      secret_is_base64: false
+      anonymous: ""
+      run_on_preflight: true
+    tags:
+      - auth
+      - jwt
+
+  - name: jwt
+    route: sales-routes
+    config:
+      uri_param_names:
+        - jwt
+      cookie_names:
+        - jwt
+      header_names:
+        - authorization
+      claims_to_verify:
+        - exp
+      key_claim_name: iss
+      secret_is_base64: false
+      anonymous: ""
+      run_on_preflight: true
+    tags:
+      - auth
+      - jwt
+
+  - name: jwt
+    route: invoicing-routes
+    config:
+      uri_param_names:
+        - jwt
+      cookie_names:
+        - jwt
+      header_names:
+        - authorization
+      claims_to_verify:
+        - exp
+      key_claim_name: iss
+      secret_is_base64: false
+      anonymous: ""
+      run_on_preflight: true
+    tags:
+      - auth
+      - jwt
+
+  - name: jwt
+    route: inventory-routes
+    config:
+      uri_param_names:
+        - jwt
+      cookie_names:
+        - jwt
+      header_names:
+        - authorization
+      claims_to_verify:
+        - exp
+      key_claim_name: iss
+      secret_is_base64: false
+      anonymous: ""
+      run_on_preflight: true
+    tags:
+      - auth
+      - jwt
+
+  - name: jwt
+    route: accounting-routes
+    config:
+      uri_param_names:
+        - jwt
+      cookie_names:
+        - jwt
+      header_names:
+        - authorization
+      claims_to_verify:
+        - exp
+      key_claim_name: iss
+      secret_is_base64: false
+      anonymous: ""
+      run_on_preflight: true
+    tags:
+      - auth
+      - jwt
+
+  - name: jwt
+    route: hrm-routes
+    config:
+      uri_param_names:
+        - jwt
+      cookie_names:
+        - jwt
+      header_names:
+        - authorization
+      claims_to_verify:
+        - exp
+      key_claim_name: iss
+      secret_is_base64: false
+      anonymous: ""
+      run_on_preflight: true
+    tags:
+      - auth
+      - jwt
+
+  - name: jwt
+    route: workflow-routes
+    config:
+      uri_param_names:
+        - jwt
+      cookie_names:
+        - jwt
+      header_names:
+        - authorization
+      claims_to_verify:
+        - exp
+      key_claim_name: iss
+      secret_is_base64: false
+      anonymous: ""
+      run_on_preflight: true
+    tags:
+      - auth
+      - jwt
+
+# Upstreams for Load Balancing (if multiple instances)
+upstreams:
+  - name: auth-upstream
+    algorithm: round-robin
+    hash_on: none
+    hash_fallback: none
+    healthchecks:
+      active:
+        timeout: 1
+        concurrency: 10
+        http_path: "/health"
+        healthy:
+          interval: 10
+          http_statuses:
+            - 200
+            - 302
+          successes: 2
+        unhealthy:
+          interval: 10
+          http_statuses:
+            - 429
+            - 404
+            - 500
+            - 501
+            - 502
+            - 503
+            - 504
+            - 505
+          tcp_failures: 3
+          timeouts: 3
+          http_failures: 5
+      passive:
+        healthy:
+          http_statuses:
+            - 200
+            - 201
+            - 202
+            - 203
+            - 204
+            - 205
+            - 206
+            - 207
+            - 208
+            - 226
+            - 300
+            - 301
+            - 302
+            - 303
+            - 304
+            - 305
+            - 306
+            - 307
+            - 308
+          successes: 3
+        unhealthy:
+          http_statuses:
+            - 429
+            - 500
+            - 503
+          tcp_failures: 3
+          timeouts: 3
+          http_failures: 3
+    tags:
+      - auth
+      - upstream
+
+# Targets for Upstreams
+targets:
+  - target: auth-service:3000
+    upstream: auth-upstream
+    weight: 100
+    tags:
+      - auth
+      - target
